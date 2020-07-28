@@ -1,24 +1,15 @@
 package bootstrap
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
-	"text/template"
 
 	"github.com/containers/image/pkg/sysregistriesv2"
-	ignutil "github.com/coreos/ignition/v2/config/util"
 	igntypes "github.com/coreos/ignition/v2/config/v3_1/types"
 	configv1 "github.com/openshift/api/config/v1"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-
 	"github.com/openshift/installer/data"
 	"github.com/openshift/installer/pkg/asset"
 	"github.com/openshift/installer/pkg/asset/ignition"
@@ -34,6 +25,7 @@ import (
 	"github.com/openshift/installer/pkg/types"
 	baremetaltypes "github.com/openshift/installer/pkg/types/baremetal"
 	vspheretypes "github.com/openshift/installer/pkg/types/vsphere"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -151,11 +143,25 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 		},
 	}
 
-	err = a.addStorageFiles("/", "bootstrap/files", templateData)
+	err = ignition.AddStorageFiles(a.Config, "/", "bootstrap/files", templateData)
 	if err != nil {
 		return err
 	}
-	err = a.addSystemdUnits("bootstrap/systemd/units", templateData)
+
+	enabled := map[string]struct{}{
+		"progress.service":                {},
+		"kubelet.service":                 {},
+		"chown-gatewayd-key.service":      {},
+		"systemd-journal-gatewayd.socket": {},
+		"approve-csr.service":             {},
+		// baremetal & openstack platform services
+		"keepalived.service":        {},
+		"coredns.service":           {},
+		"ironic.service":            {},
+		"master-bmh-update.service": {},
+	}
+
+	err = ignition.AddSystemdUnits(a.Config, "bootstrap/systemd/units", templateData, enabled)
 	if err != nil {
 		return err
 	}
@@ -166,7 +172,7 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 	directory, err := data.Assets.Open(platformFilePath)
 	if err == nil {
 		directory.Close()
-		err = a.addStorageFiles("/", platformFilePath, templateData)
+		err = ignition.AddStorageFiles(a.Config, "/", platformFilePath, templateData)
 		if err != nil {
 			return err
 		}
@@ -176,13 +182,72 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 	directory, err = data.Assets.Open(platformUnitPath)
 	if err == nil {
 		directory.Close()
-		err = a.addSystemdUnits(platformUnitPath, templateData)
+		err = ignition.AddSystemdUnits(a.Config, platformUnitPath, templateData, enabled)
 		if err != nil {
 			return err
 		}
 	}
 
-	a.addParentFiles(dependencies)
+	for _, asset := range []asset.WritableAsset{
+		&manifests.Manifests{},
+		&manifests.Openshift{},
+		&machines.Master{},
+		&machines.Worker{},
+	} {
+		dependencies.Get(asset)
+
+		// Replace files that already exist in the slice with ones added later, otherwise append them
+		for _, file := range ignition.FilesFromAsset(rootDir, "root", 0644, asset) {
+			a.Config.Storage.Files = ignition.ReplaceOrAppend(a.Config.Storage.Files, file)
+		}
+	}
+	ignition.AddParentFiles(a.Config, dependencies, "/", "root", 0600, []asset.WritableAsset{
+		&kubeconfig.AdminInternalClient{},
+		&kubeconfig.Kubelet{},
+		&kubeconfig.LoopbackClient{},
+		&tls.AdminKubeConfigCABundle{},
+		&tls.AggregatorCA{},
+		&tls.AggregatorCABundle{},
+		&tls.AggregatorClientCertKey{},
+		&tls.AggregatorSignerCertKey{},
+		&tls.APIServerProxyCertKey{},
+		&tls.EtcdCABundle{},
+		&tls.EtcdMetricCABundle{},
+		&tls.EtcdMetricSignerCertKey{},
+		&tls.EtcdMetricSignerClientCertKey{},
+		&tls.EtcdSignerCertKey{},
+		&tls.EtcdSignerClientCertKey{},
+		&tls.KubeAPIServerLBCABundle{},
+		&tls.KubeAPIServerExternalLBServerCertKey{},
+		&tls.KubeAPIServerInternalLBServerCertKey{},
+		&tls.KubeAPIServerLBSignerCertKey{},
+		&tls.KubeAPIServerLocalhostCABundle{},
+		&tls.KubeAPIServerLocalhostServerCertKey{},
+		&tls.KubeAPIServerLocalhostSignerCertKey{},
+		&tls.KubeAPIServerServiceNetworkCABundle{},
+		&tls.KubeAPIServerServiceNetworkServerCertKey{},
+		&tls.KubeAPIServerServiceNetworkSignerCertKey{},
+		&tls.KubeAPIServerCompleteCABundle{},
+		&tls.KubeAPIServerCompleteClientCABundle{},
+		&tls.KubeAPIServerToKubeletCABundle{},
+		&tls.KubeAPIServerToKubeletClientCertKey{},
+		&tls.KubeAPIServerToKubeletSignerCertKey{},
+		&tls.KubeControlPlaneCABundle{},
+		&tls.KubeControlPlaneKubeControllerManagerClientCertKey{},
+		&tls.KubeControlPlaneKubeSchedulerClientCertKey{},
+		&tls.KubeControlPlaneSignerCertKey{},
+		&tls.KubeletBootstrapCABundle{},
+		&tls.KubeletClientCABundle{},
+		&tls.KubeletClientCertKey{},
+		&tls.KubeletCSRSignerCertKey{},
+		&tls.KubeletServingCABundle{},
+		&tls.MCSCertKey{},
+		&tls.ServiceAccountKeyPair{},
+		&tls.JournalCertKey{},
+	})
+	rootCA := &tls.RootCA{}
+	dependencies.Get(rootCA)
+	a.Config.Storage.Files = ignition.ReplaceOrAppend(a.Config.Storage.Files, ignition.FileFromBytes(filepath.Join(rootDir, rootCA.CertFile().Filename), "root", 0644, rootCA.Cert()))
 
 	a.Config.Passwd.Users = append(
 		a.Config.Passwd.Users,
@@ -262,284 +327,6 @@ func (a *Bootstrap) getTemplateData(installConfig *types.InstallConfig, releaseI
 		ClusterDomain:         installConfig.ClusterDomain(),
 		PlatformData:          platformData,
 	}, nil
-}
-
-func (a *Bootstrap) addStorageFiles(base string, uri string, templateData *bootstrapTemplateData) (err error) {
-	file, err := data.Assets.Open(uri)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
-	if info.IsDir() {
-		children, err := file.Readdir(0)
-		if err != nil {
-			return err
-		}
-		if err = file.Close(); err != nil {
-			return err
-		}
-
-		for _, childInfo := range children {
-			name := childInfo.Name()
-			err = a.addStorageFiles(path.Join(base, name), path.Join(uri, name), templateData)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	name := info.Name()
-	_, data, err := readFile(name, file, templateData)
-	if err != nil {
-		return err
-	}
-
-	filename := path.Base(uri)
-	parentDir := path.Base(path.Dir(uri))
-
-	var mode int
-	appendToFile := false
-	if parentDir == "bin" || parentDir == "dispatcher.d" {
-		mode = 0555
-	} else if filename == "motd" {
-		mode = 0644
-		appendToFile = true
-	} else {
-		mode = 0600
-	}
-	ign := ignition.FileFromBytes(strings.TrimSuffix(base, ".template"), "root", mode, data)
-	if appendToFile {
-		ignition.ConvertToAppendix(&ign)
-	}
-
-	// Replace files that already exist in the slice with ones added later, otherwise append them
-	a.Config.Storage.Files = replaceOrAppend(a.Config.Storage.Files, ign)
-
-	return nil
-}
-
-func (a *Bootstrap) addSystemdUnits(uri string, templateData *bootstrapTemplateData) (err error) {
-	enabled := map[string]struct{}{
-		"progress.service":                {},
-		"kubelet.service":                 {},
-		"chown-gatewayd-key.service":      {},
-		"systemd-journal-gatewayd.socket": {},
-		"approve-csr.service":             {},
-		// baremetal & openstack platform services
-		"keepalived.service":        {},
-		"coredns.service":           {},
-		"ironic.service":            {},
-		"master-bmh-update.service": {},
-	}
-
-	directory, err := data.Assets.Open(uri)
-	if err != nil {
-		return err
-	}
-	defer directory.Close()
-
-	children, err := directory.Readdir(0)
-	if err != nil {
-		return err
-	}
-
-	for _, childInfo := range children {
-		dir := path.Join(uri, childInfo.Name())
-		file, err := data.Assets.Open(dir)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		info, err := file.Stat()
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			if dir := info.Name(); !strings.HasSuffix(dir, ".d") {
-				logrus.Tracef("Ignoring internal asset directory %q while looking for systemd drop-ins", dir)
-				continue
-			}
-
-			children, err := file.Readdir(0)
-			if err != nil {
-				return err
-			}
-			if err = file.Close(); err != nil {
-				return err
-			}
-
-			dropins := []igntypes.Dropin{}
-			for _, childInfo := range children {
-				file, err := data.Assets.Open(path.Join(dir, childInfo.Name()))
-				if err != nil {
-					return err
-				}
-				defer file.Close()
-
-				childName, contents, err := readFile(childInfo.Name(), file, templateData)
-				if err != nil {
-					return err
-				}
-
-				dropins = append(dropins, igntypes.Dropin{
-					Name:     childName,
-					Contents: ignutil.StrToPtr(string(contents)),
-				})
-			}
-
-			name := strings.TrimSuffix(childInfo.Name(), ".d")
-			unit := igntypes.Unit{
-				Name:    name,
-				Dropins: dropins,
-			}
-			if _, ok := enabled[name]; ok {
-				unit.Enabled = ignutil.BoolToPtr(true)
-			}
-			a.Config.Systemd.Units = append(a.Config.Systemd.Units, unit)
-		} else {
-			name, contents, err := readFile(childInfo.Name(), file, templateData)
-			if err != nil {
-				return err
-			}
-
-			unit := igntypes.Unit{
-				Name:     name,
-				Contents: ignutil.StrToPtr(string(contents)),
-			}
-			if _, ok := enabled[name]; ok {
-				unit.Enabled = ignutil.BoolToPtr(true)
-			}
-			a.Config.Systemd.Units = append(a.Config.Systemd.Units, unit)
-		}
-	}
-
-	return nil
-}
-
-// Read data from the string reader, and, if the name ends with
-// '.template', strip that extension from the name and render the
-// template.
-func readFile(name string, reader io.Reader, templateData interface{}) (finalName string, data []byte, err error) {
-	data, err = ioutil.ReadAll(reader)
-	if err != nil {
-		return name, []byte{}, err
-	}
-
-	if filepath.Ext(name) == ".template" {
-		name = strings.TrimSuffix(name, ".template")
-		tmpl := template.New(name)
-		tmpl, err := tmpl.Parse(string(data))
-		if err != nil {
-			return name, data, err
-		}
-		stringData := applyTemplateData(tmpl, templateData)
-		data = []byte(stringData)
-	}
-
-	return name, data, nil
-}
-
-func (a *Bootstrap) addParentFiles(dependencies asset.Parents) {
-	// These files are all added with mode 0644, i.e. readable
-	// by all processes on the system.
-	for _, asset := range []asset.WritableAsset{
-		&manifests.Manifests{},
-		&manifests.Openshift{},
-		&machines.Master{},
-		&machines.Worker{},
-	} {
-		dependencies.Get(asset)
-
-		// Replace files that already exist in the slice with ones added later, otherwise append them
-		for _, file := range ignition.FilesFromAsset(rootDir, "root", 0644, asset) {
-			a.Config.Storage.Files = replaceOrAppend(a.Config.Storage.Files, file)
-		}
-	}
-
-	// These files are all added with mode 0600; use for secret keys and the like.
-	for _, asset := range []asset.WritableAsset{
-		&kubeconfig.AdminInternalClient{},
-		&kubeconfig.Kubelet{},
-		&kubeconfig.LoopbackClient{},
-		&tls.AdminKubeConfigCABundle{},
-		&tls.AggregatorCA{},
-		&tls.AggregatorCABundle{},
-		&tls.AggregatorClientCertKey{},
-		&tls.AggregatorSignerCertKey{},
-		&tls.APIServerProxyCertKey{},
-		&tls.EtcdCABundle{},
-		&tls.EtcdMetricCABundle{},
-		&tls.EtcdMetricSignerCertKey{},
-		&tls.EtcdMetricSignerClientCertKey{},
-		&tls.EtcdSignerCertKey{},
-		&tls.EtcdSignerClientCertKey{},
-		&tls.KubeAPIServerLBCABundle{},
-		&tls.KubeAPIServerExternalLBServerCertKey{},
-		&tls.KubeAPIServerInternalLBServerCertKey{},
-		&tls.KubeAPIServerLBSignerCertKey{},
-		&tls.KubeAPIServerLocalhostCABundle{},
-		&tls.KubeAPIServerLocalhostServerCertKey{},
-		&tls.KubeAPIServerLocalhostSignerCertKey{},
-		&tls.KubeAPIServerServiceNetworkCABundle{},
-		&tls.KubeAPIServerServiceNetworkServerCertKey{},
-		&tls.KubeAPIServerServiceNetworkSignerCertKey{},
-		&tls.KubeAPIServerCompleteCABundle{},
-		&tls.KubeAPIServerCompleteClientCABundle{},
-		&tls.KubeAPIServerToKubeletCABundle{},
-		&tls.KubeAPIServerToKubeletClientCertKey{},
-		&tls.KubeAPIServerToKubeletSignerCertKey{},
-		&tls.KubeControlPlaneCABundle{},
-		&tls.KubeControlPlaneKubeControllerManagerClientCertKey{},
-		&tls.KubeControlPlaneKubeSchedulerClientCertKey{},
-		&tls.KubeControlPlaneSignerCertKey{},
-		&tls.KubeletBootstrapCABundle{},
-		&tls.KubeletClientCABundle{},
-		&tls.KubeletClientCertKey{},
-		&tls.KubeletCSRSignerCertKey{},
-		&tls.KubeletServingCABundle{},
-		&tls.MCSCertKey{},
-		&tls.ServiceAccountKeyPair{},
-		&tls.JournalCertKey{},
-	} {
-		dependencies.Get(asset)
-
-		// Replace files that already exist in the slice with ones added later, otherwise append them
-		for _, file := range ignition.FilesFromAsset(rootDir, "root", 0600, asset) {
-			a.Config.Storage.Files = replaceOrAppend(a.Config.Storage.Files, file)
-		}
-	}
-
-	rootCA := &tls.RootCA{}
-	dependencies.Get(rootCA)
-	a.Config.Storage.Files = replaceOrAppend(a.Config.Storage.Files, ignition.FileFromBytes(filepath.Join(rootDir, rootCA.CertFile().Filename), "root", 0644, rootCA.Cert()))
-}
-
-func replaceOrAppend(files []igntypes.File, file igntypes.File) []igntypes.File {
-	for i, f := range files {
-		if f.Node.Path == file.Node.Path {
-			files[i] = file
-			return files
-		}
-	}
-	files = append(files, file)
-	return files
-}
-
-func applyTemplateData(template *template.Template, templateData interface{}) string {
-	buf := &bytes.Buffer{}
-	if err := template.Execute(buf, templateData); err != nil {
-		panic(err)
-	}
-	return buf.String()
 }
 
 // Load returns the bootstrap ignition from disk.
