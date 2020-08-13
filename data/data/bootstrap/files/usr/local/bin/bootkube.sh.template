@@ -333,31 +333,7 @@ then
 	touch mco-bootstrap.done
 fi
 
-if [ ! -f cco-bootstrap.done ]
-then
-	echo "Rendering CCO manifests..."
 
-	rm --recursive --force cco-bootstrap
-
-	# shellcheck disable=SC2154
-	bootkube_podman_run \
-		--quiet \
-		--user 0 \
-		--volume "$PWD:/assets:z" \
-		${CLOUD_CREDENTIAL_OPERATOR_IMAGE} \
-		render \
-			--dest-dir=/assets/cco-bootstrap \
-			--manifests-dir=/assets/manifests \
-			--cloud-credential-operator-image=${CLOUD_CREDENTIAL_OPERATOR_IMAGE}
-
-	cp cco-bootstrap/manifests/* manifests/
-	# skip copy if static pod manifest does not exist (ie CCO has been disabled)
-	if [ -f cco-bootstrap/bootstrap-manifests/cloud-credential-operator-pod.yaml ]; then
-		cp cco-bootstrap/bootstrap-manifests/* bootstrap-manifests/
-	fi
-
-	touch cco-bootstrap.done
-fi
 
 # Wait for the etcd cluster to come up.
 until bootkube_podman_run \
@@ -382,31 +358,37 @@ echo "etcd cluster up. Killing etcd certificate signer..."
 
 podman rm --force etcd-signer
 
-echo "Starting cluster-bootstrap..."
+echo "skipping cluster-bootstrap..."
 
-if [ ! -f cb-bootstrap.done ]
-then
-    bootkube_podman_run \
-        --rm \
-        --volume "$PWD:/assets:z" \
-        --volume /etc/kubernetes:/etc/kubernetes:z \
-        "${CLUSTER_BOOTSTRAP_IMAGE}" \
-        start --tear-down-early=false --asset-dir=/assets --required-pods="openshift-kube-apiserver/kube-apiserver,openshift-kube-scheduler/openshift-kube-scheduler,openshift-kube-controller-manager/kube-controller-manager,openshift-cluster-version/cluster-version-operator"
-    touch cb-bootstrap.done
-fi
+mkdir -p /etc/kubernetes/bootstrap-secrets/
+cp /opt/openshift/tls/* /etc/kubernetes/bootstrap-secrets/
+#Copy the admin kubeconfig - this is a hack!
+cp /opt/openshift/auth/kubeconfig /etc/kubernetes/bootstrap-secrets/
+cp /opt/openshift/bootstrap-manifests/* /etc/kubernetes/manifests/
 
+echo "Get the master ignition"
+curl -k https://localhost:22623/config/master -o master.ign
+
+# Remove the MCS
 rm --force /etc/kubernetes/manifests/machineconfigoperator-bootstrap-pod.yaml
 
-if [ ! -z "$CLUSTER_ETCD_OPERATOR_IMAGE" ]
-then
-	echo "Waiting for CEO to finish..."
-	bootkube_podman_run \
-		--volume "$PWD:/assets:z" \
-		"${CLUSTER_ETCD_OPERATOR_IMAGE}" \
-		/usr/bin/cluster-etcd-operator \
-			wait-for-ceo \
-			--kubeconfig /assets/auth/kubeconfig
-fi
+echo "Deploy master ignition"
+bootkube_podman_run \
+	--user 0 \
+	--volume "$PWD:/assets:z" \
+	--volume /usr/bin/rpm-ostree:/usr/bin/rpm-ostree \
+	--volume /:/rootfs \
+	--privileged \
+	--entrypoint /usr/bin/machine-config-daemon \
+	"${MACHINE_CONFIG_OPERATOR_IMAGE}" \
+  start --node-name localhost --root-mount /rootfs --once-from  /opt/openshift/master.ign --skip-reboot
+
+#Unsure if this is required, for some reason kubelet failed to register the node when using the /etc/kubernetes/kubeconfig it got from the master.ign
+cp /opt/openshift/auth/kubeconfig /etc/kubernetes/kubeconfig
+
+echo "Restarting kubelet"
+systemctl daemon-reload
+systemctl restart kubelet
 
 # Workaround for https://github.com/opencontainers/runc/pull/1807
 touch /opt/openshift/.bootkube.done
