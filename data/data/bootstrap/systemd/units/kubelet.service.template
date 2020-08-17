@@ -14,6 +14,9 @@ EnvironmentFile=-/etc/kubernetes/kubelet-pause-image-override
 
 ExecStart=/usr/bin/hyperkube \
   kubelet \
+    --config=/etc/kubernetes/kubelet.conf \
+    --bootstrap-kubeconfig=/opt/openshift/auth/kubeconfig  \
+    --kubeconfig=/var/lib/kubelet/kubeconfig \
     --container-runtime=remote \
     --container-runtime-endpoint=/var/run/crio/crio.sock \
     --runtime-request-timeout=${KUBELET_RUNTIME_REQUEST_TIMEOUT} \

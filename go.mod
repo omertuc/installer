@@ -13,9 +13,9 @@ require (
 	github.com/ChrisTrenkamp/goxpath v0.0.0-20190607011252-c5096ec8773d // indirect
 	github.com/Netflix/go-expect v0.0.0-20190729225929-0e00d9168667 // indirect
 	github.com/antchfx/xpath v1.1.2 // indirect
-	github.com/apparentlymart/go-cidr v1.0.1
-	github.com/awalterschulze/gographviz v0.0.0-20190522210029-fa59802746ab
-	github.com/aws/aws-sdk-go v1.32.3
+	github.com/apparentlymart/go-cidr v1.0.1 // indirect
+	github.com/awalterschulze/gographviz v0.0.0-20190522210029-fa59802746ab // indirect
+	github.com/aws/aws-sdk-go v1.32.3 // indirect
 	github.com/btubbs/datetime v0.1.1 // indirect
 	github.com/c4milo/gotoolkit v0.0.0-20190525173301-67483a18c17a // indirect
 	github.com/clarketm/json v1.14.1
@@ -40,7 +40,7 @@ require (
 	github.com/hashicorp/vault v1.3.0 // indirect
 	github.com/hinshun/vt10x v0.0.0-20180809195222-d55458df857c // indirect
 	github.com/keybase/go-crypto v0.0.0-20190828182435-a05457805304 // indirect
-	github.com/libvirt/libvirt-go v5.10.0+incompatible
+	github.com/libvirt/libvirt-go v5.10.0+incompatible // indirect
 	github.com/libvirt/libvirt-go-xml v5.10.0+incompatible // indirect
 	github.com/masterzen/simplexml v0.0.0-20190410153822-31eea3082786 // indirect
 	github.com/masterzen/winrm v0.0.0-20190308153735-1d17eaf15943 // indirect
@@ -61,7 +61,7 @@ require (
 	github.com/ovirt/go-ovirt v0.0.0-20200613023950-320a86f9df27
 	github.com/ovirt/terraform-provider-ovirt v0.4.3-0.20200914080915-c4444fb5c201
 	github.com/packer-community/winrmcp v0.0.0-20180921211025-c76d91c1e7db // indirect
-	github.com/pborman/uuid v1.2.0
+	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pierrec/lz4 v2.3.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.10.1
@@ -69,8 +69,8 @@ require (
 	github.com/prometheus/common v0.9.1
 	github.com/satori/uuid v1.2.0 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
-	github.com/sirupsen/logrus v1.5.0
-	github.com/spf13/cobra v0.0.6
+	github.com/sirupsen/logrus v1.5.0 // indirect
+	github.com/spf13/cobra v0.0.6 // indirect
 	github.com/stoewer/go-strcase v1.1.0 // indirect
 	github.com/stretchr/testify v1.5.1
 	github.com/terraform-providers/terraform-provider-aws v0.0.0
@@ -83,7 +83,7 @@ require (
 	github.com/terraform-providers/terraform-provider-vsphere v1.16.2
 	github.com/ulikunitz/xz v0.5.7
 	github.com/vincent-petithory/dataurl v0.0.0-20191104211930-d1553a71de50
-	github.com/vmware/govmomi v0.22.2
+	github.com/vmware/govmomi v0.22.2 // indirect
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	golang.org/x/crypto v0.0.0-20200429183012-4b2356b1ed79
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
