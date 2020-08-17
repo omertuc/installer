@@ -1,5 +1,5 @@
 [Unit]
-Description=Bootstrap an all-on-one Kubernetes cluster
+Description=Bootstrap an all-in-one Kubernetes cluster
 Requires=crio-configure.service
 Wants=kubelet.service
 After=kubelet.service crio-configure.service

@@ -5,10 +5,10 @@ clean:
 generate:
 	mkdir mydir
 	cp ../install-config.yaml mydir/
-	./bin/openshift-install create ignition-configs --dir=mydir
+	./bin/openshift-install create aio-config --dir=mydir
 
 start:
-	./hack/virt-install-aio-ign.sh ./mydir/bootstrap.ign
+	./hack/virt-install-aio-ign.sh ./mydir/aio.ign
 
 network:
 	./hack/virt-create-net.sh
