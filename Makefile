@@ -4,7 +4,7 @@ clean:
 
 generate:
 	mkdir mydir
-	cp ../install-config.yaml mydir/
+	cp ./install-config.yaml mydir/
 	./bin/openshift-install create aio-config --dir=mydir
 
 start:
@@ -14,5 +14,10 @@ network:
 	./hack/virt-create-net.sh
 
 ssh:
-	#ssh -i ~/.ssh/id_rsa core@$(shell sudo virsh net-dhcp-leases default | grep `sudo virsh dumpxml aio-test| grep 52:54:00 | awk -F "'" '{print $$2}'` | awk '{print $$5}' | awk -F "/" '{print $$1}')
-	ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa core@192.168.126.10
+	chmod 400 ./hack/ssh/key
+	ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ./hack/ssh/key core@192.168.126.10
+
+image:
+	curl -O -L https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/rhcos-4.6/46.82.202007051540-0/x86_64/rhcos-46.82.202007051540-0-qemu.x86_64.qcow2.gz
+	mv rhcos-46.82.202007051540-0-qemu.x86_64.qcow2.gz /tmp
+	sudo gunzip /tmp/rhcos-46.82.202007051540-0-qemu.x86_64.qcow2.gz
