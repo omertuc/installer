@@ -14,10 +14,8 @@ bootkube_podman_run() {
 }
 
 MACHINE_CONFIG_OPERATOR_IMAGE=$(image_for machine-config-operator)
-MACHINE_CONFIG_OSCONTENT=$(image_for machine-os-content)
 MACHINE_CONFIG_ETCD_IMAGE=$(image_for etcd)
 MACHINE_CONFIG_KUBE_CLIENT_AGENT_IMAGE=$(image_for kube-client-agent)
-MACHINE_CONFIG_INFRA_IMAGE=$(image_for pod)
 
 KUBE_ETCD_SIGNER_SERVER_IMAGE=$(image_for kube-etcd-signer-server)
 CLUSTER_ETCD_OPERATOR_IMAGE=$(image_for cluster-etcd-operator || echo "no-ceo-image")
@@ -30,49 +28,19 @@ CONFIG_OPERATOR_IMAGE=$(image_for cluster-config-operator)
 KUBE_APISERVER_OPERATOR_IMAGE=$(image_for cluster-kube-apiserver-operator)
 KUBE_CONTROLLER_MANAGER_OPERATOR_IMAGE=$(image_for cluster-kube-controller-manager-operator)
 KUBE_SCHEDULER_OPERATOR_IMAGE=$(image_for cluster-kube-scheduler-operator)
-INGRESS_OPERATOR_IMAGE=$(image_for cluster-ingress-operator)
-
-CLOUD_CREDENTIAL_OPERATOR_IMAGE=$(image_for cloud-credential-operator)
 
 OPENSHIFT_HYPERKUBE_IMAGE=$(image_for hyperkube)
 
-CLUSTER_BOOTSTRAP_IMAGE=$(image_for cluster-bootstrap)
-
-KEEPALIVED_IMAGE=$(image_for keepalived-ipfailover || echo "no-keepalived-image")
-COREDNS_IMAGE=$(image_for coredns)
-MDNS_PUBLISHER_IMAGE=$(image_for mdns-publisher)
-HAPROXY_IMAGE=$(image_for haproxy-router)
-BAREMETAL_RUNTIMECFG_IMAGE=$(image_for baremetal-runtimecfg)
 
 mkdir --parents ./{bootstrap-manifests,manifests}
 
-# TODO: check what this is for and if its required
-if [ ! -f cvo-bootstrap.done ]
+if [ ! -f kubeconfig.done ]
 then
-	echo "Rendering Cluster Version Operator Manifests..."
-
-	rm --recursive --force cvo-bootstrap
-
-	bootkube_podman_run \
-		--volume "$PWD:/assets:z" \
-		"${RELEASE_IMAGE_DIGEST}" \
-		render \
-			--output-dir=/assets/cvo-bootstrap \
-			--release-image="${RELEASE_IMAGE_DIGEST}"
-
-	cp cvo-bootstrap/bootstrap/* bootstrap-manifests/
-	cp cvo-bootstrap/manifests/* manifests/
-	## FIXME: CVO should use `/etc/kubernetes/bootstrap-secrets/kubeconfig` instead
-	cp auth/kubeconfig-loopback /etc/kubernetes/kubeconfig
-
-	touch cvo-bootstrap.done
+	echo "Updating kubeconfig..."
+    cp auth/kubeconfig-loopback /etc/kubernetes/kubeconfig
+	touch kubeconfig.done
 fi
 
-# We originally wanted to run the etcd cert signer as
-# a static pod, but kubelet could't remove static pod
-# when API server is not up, so we have to run this as
-# podman container.
-# See https://github.com/kubernetes/kubernetes/issues/43292
 
 echo "Starting etcd certificate signer..."
 
@@ -101,7 +69,6 @@ bootkube_podman_run \
 	--servercertdur=26280h \
 	--metriccertdur=26280h
 
-# TODO: For now we will run with the bootstrap etcd so unsure if its required
 # during initial operator rollout phase this logic allows us to deploy the operator via CVO
 # in an `Unmanaged` no-op state. after all of the pieces have merged and the operator is
 # deemed stable we can remove this logic and the operator will be `Managed` by default.
@@ -188,6 +155,7 @@ then
 	cp kube-apiserver-bootstrap/config /etc/kubernetes/bootstrap-configs/kube-apiserver-config.yaml
 	cp kube-apiserver-bootstrap/bootstrap-manifests/* bootstrap-manifests/
 	cp kube-apiserver-bootstrap/manifests/* manifests/
+    sed -i 's/bootstrap-kube-apiserver/kube-apiserver/g' bootstrap-manifests/kube-apiserver-pod.yaml
 
 	touch kube-apiserver-bootstrap.done
 fi
@@ -211,6 +179,7 @@ then
 	cp kube-controller-manager-bootstrap/config /etc/kubernetes/bootstrap-configs/kube-controller-manager-config.yaml
 	cp kube-controller-manager-bootstrap/bootstrap-manifests/* bootstrap-manifests/
 	cp kube-controller-manager-bootstrap/manifests/* manifests/
+    sed -i 's/bootstrap-kube-controller-manager/kube-controller-manager/g' bootstrap-manifests/kube-controller-manager-pod.yaml
 
 	touch kube-controller-manager-bootstrap.done
 fi
@@ -233,6 +202,7 @@ then
 	cp kube-scheduler-bootstrap/config /etc/kubernetes/bootstrap-configs/kube-scheduler-config.yaml
 	cp kube-scheduler-bootstrap/bootstrap-manifests/* bootstrap-manifests/
 	cp kube-scheduler-bootstrap/manifests/* manifests/
+    sed -i 's/bootstrap-kube-scheduler/kube-scheduler/g' bootstrap-manifests/kube-scheduler-pod.yaml
 
 	touch kube-scheduler-bootstrap.done
 fi
@@ -260,17 +230,17 @@ echo "etcd cluster up. Killing etcd certificate signer..."
 
 podman rm --force etcd-signer
 
-echo "skipping cluster-bootstrap..."
 
 if [ ! -f control-plane.done ]
 then
+    echo "Setting up control plane  ..."
     mkdir -p /etc/kubernetes/bootstrap-secrets/
     cp /opt/openshift/tls/* /etc/kubernetes/bootstrap-secrets/
     #Copy the admin kubeconfig - this is a hack!
     cp /opt/openshift/auth/kubeconfig /etc/kubernetes/bootstrap-secrets/
     cp /opt/openshift/bootstrap-manifests/* /etc/kubernetes/manifests/
-	touch control-plane.done
 
+	touch control-plane.done
 fi
 
 echo "Waiting for node to join"
