@@ -62,6 +62,8 @@ var (
 
 	// AIOConfigs are the aio-config targeted assets.
 	AIOConfig = []asset.WritableAsset{
+		&kubeconfig.AdminClient{},
+		&password.KubeadminPassword{},
 		&aio.AIO{},
 	}
 
