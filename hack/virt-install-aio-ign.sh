@@ -24,5 +24,6 @@ virt-install \
     --network=network:test-net,mac=52:54:00:ee:42:e1 \
     --graphics=none \
     --disk "size=${DISK_GB},backing_store=${RHCOS_IMAGE}" \
+    --noautoconsole \
     --qemu-commandline="-fw_cfg name=opt/com.coreos/config,file=${IGNITION_CONFIG}"
 
