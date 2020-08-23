@@ -250,6 +250,13 @@ done
 echo "Node joined"
 echo -e "$(kubectl --kubeconfig=$INSTALL_DIR/auth/kubeconfig get nodes)"
 
+
+echo "Stopping approve-csr service"
+systemctl disable approve-csr.service
+systemctl stop approve-csr.service
+systemctl status approve-csr.service
+
+
 echo "Adding labels"
 kubectl --kubeconfig /opt/openshift/auth/kubeconfig-loopback label node master1 node-role.kubernetes.io/worker=
 kubectl --kubeconfig /opt/openshift/auth/kubeconfig-loopback label node master1 node-role.kubernetes.io/master=
