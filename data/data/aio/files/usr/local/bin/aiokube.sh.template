@@ -24,7 +24,6 @@ CLUSTER_ETCD_OPERATOR_MANAGED=${CLUSTER_ETCD_OPERATOR_IMAGE:+$(bootkube_podman_r
 	/usr/bin/grep -oP Managed \
 	/manifests/0000_12_etcd-operator_01_operator.cr.yaml)} || echo "CEO is Unmanaged"
 
-CONFIG_OPERATOR_IMAGE=$(image_for cluster-config-operator)
 KUBE_APISERVER_OPERATOR_IMAGE=$(image_for cluster-kube-apiserver-operator)
 KUBE_CONTROLLER_MANAGER_OPERATOR_IMAGE=$(image_for cluster-kube-controller-manager-operator)
 KUBE_SCHEDULER_OPERATOR_IMAGE=$(image_for cluster-kube-scheduler-operator)
@@ -98,7 +97,6 @@ then
 		# pass an IP in the sample range to pass validation, but be ignored.
 		sed -i "s/__BOOTSTRAP_IP__/192.0.2.200/" /opt/openshift/manifests/etcd-host-service-endpoints.yaml
 
-		cp etcd-bootstrap/manifests/* manifests/
 		cp etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml /etc/kubernetes/manifests/
 
 		# /etc/kubernetes/static-pod-resources/etcd-member is the location etcd-bootstrap tls assets.
@@ -114,24 +112,6 @@ else
 	sed -i '/etcd-bootstrap/I,+1 d' /opt/openshift/manifests/etcd-host-service-endpoints.yaml
 fi
 
-if [ ! -f config-bootstrap.done ]
-then
-	echo "Rendering cluster config manifests..."
-
-	rm --recursive --force config-bootstrap
-
-	bootkube_podman_run \
-		--volume "$PWD:/assets:z" \
-		"${CONFIG_OPERATOR_IMAGE}" \
-		/usr/bin/cluster-config-operator render \
-		--config-output-file=/assets/config-bootstrap/config \
-		--asset-input-dir=/assets/tls \
-		--asset-output-dir=/assets/config-bootstrap
-
-	cp config-bootstrap/manifests/* manifests/
-
-	touch config-bootstrap.done
-fi
 
 if [ ! -f kube-apiserver-bootstrap.done ]
 then
@@ -154,7 +134,6 @@ then
 
 	cp kube-apiserver-bootstrap/config /etc/kubernetes/bootstrap-configs/kube-apiserver-config.yaml
 	cp kube-apiserver-bootstrap/bootstrap-manifests/* bootstrap-manifests/
-	cp kube-apiserver-bootstrap/manifests/* manifests/
     sed -i 's/bootstrap-kube-apiserver/kube-apiserver/g' bootstrap-manifests/kube-apiserver-pod.yaml
 
 	touch kube-apiserver-bootstrap.done
@@ -178,7 +157,6 @@ then
 
 	cp kube-controller-manager-bootstrap/config /etc/kubernetes/bootstrap-configs/kube-controller-manager-config.yaml
 	cp kube-controller-manager-bootstrap/bootstrap-manifests/* bootstrap-manifests/
-	cp kube-controller-manager-bootstrap/manifests/* manifests/
     sed -i 's/bootstrap-kube-controller-manager/kube-controller-manager/g' bootstrap-manifests/kube-controller-manager-pod.yaml
 
 	touch kube-controller-manager-bootstrap.done
@@ -201,7 +179,6 @@ then
 
 	cp kube-scheduler-bootstrap/config /etc/kubernetes/bootstrap-configs/kube-scheduler-config.yaml
 	cp kube-scheduler-bootstrap/bootstrap-manifests/* bootstrap-manifests/
-	cp kube-scheduler-bootstrap/manifests/* manifests/
     sed -i 's/bootstrap-kube-scheduler/kube-scheduler/g' bootstrap-manifests/kube-scheduler-pod.yaml
 
 	touch kube-scheduler-bootstrap.done
@@ -248,13 +225,12 @@ until [ $(kubectl --kubeconfig=/opt/openshift/auth/kubeconfig get nodes | grep R
     sleep 5s
 done
 echo "Node joined"
-echo -e "$(kubectl --kubeconfig=$INSTALL_DIR/auth/kubeconfig get nodes)"
+echo -e "$(kubectl --kubeconfig=/opt/openshift/auth/kubeconfig get nodes)"
 
 
 echo "Stopping approve-csr service"
 systemctl disable approve-csr.service
 systemctl stop approve-csr.service
-systemctl status approve-csr.service
 
 
 echo "Adding labels"
