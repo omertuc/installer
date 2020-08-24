@@ -261,5 +261,6 @@ echo "Adding labels"
 kubectl --kubeconfig /opt/openshift/auth/kubeconfig-loopback label node master1 node-role.kubernetes.io/worker=
 kubectl --kubeconfig /opt/openshift/auth/kubeconfig-loopback label node master1 node-role.kubernetes.io/master=
 
+systemctl disable aiokube.service
 touch /opt/openshift/.aiokube.done
 echo "aiokube.service complete"
