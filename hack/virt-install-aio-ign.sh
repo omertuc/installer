@@ -9,7 +9,7 @@ sudo cp "$1" "${IGNITION_CONFIG}"
 sudo chown qemu:qemu "${IGNITION_CONFIG}"
 sudo restorecon "${IGNITION_CONFIG}"
 
-RHCOS_IMAGE="/tmp/rhcos-46.82.202007051540-0-qemu.x86_64.qcow2"
+RHCOS_IMAGE="/tmp/rhcos-46.82.202008181646-0-qemu.x86_64.qcow2"
 VM_NAME="aio-test"
 OS_VARIANT="rhel8.1"
 RAM_MB="16384"
