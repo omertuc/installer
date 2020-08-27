@@ -34,6 +34,7 @@ type aioTemplateData struct {
 	ClusterDomain string
 	EtcdCluster   string
 	ClusterDNSIP  string
+	PullSecret    string
 }
 
 // AIO is an asset that generates the ignition config for an all-in-one node.
@@ -245,6 +246,8 @@ func (a *AIO) getTemplateData(installConfig *types.InstallConfig, releaseImage s
 		ClusterDomain: installConfig.ClusterDomain(),
 		EtcdCluster:   fmt.Sprintf("https://etcd-0.%s:2379", installConfig.ClusterDomain()),
 		ClusterDNSIP:  dnsIp,
+		PullSecret: installConfig.PullSecret,
+
 	}, nil
 }
 
