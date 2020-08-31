@@ -61,7 +61,9 @@ then
 	# pass an IP in the sample range to pass validation, but be ignored.
 	sed -i "s/__BOOTSTRAP_IP__/192.0.2.200/" /opt/openshift/manifests/etcd-host-service-endpoints.yaml
 
-	cp etcd-bootstrap/manifests/* manifests/
+    sed -i 's/etcd-bootstrap-member/etcd-member/g' etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml
+    sed -i 's/openshift-etcd/kube-system/g' etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml
+
 	cp etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml /etc/kubernetes/manifests/
 
 	mkdir --parents /etc/kubernetes/static-pod-resources/etcd-member
@@ -178,12 +180,11 @@ then
 fi
 
 echo "Waiting for node to join"
-until [ $(kubectl --kubeconfig=/opt/openshift/auth/kubeconfig get nodes | grep Ready | wc -l) -eq 1 ]; do
+until [ $(kubectl --kubeconfig=/opt/openshift/auth/kubeconfig-loopback get nodes | grep Ready | wc -l) -eq 1 ]; do
     sleep 5s
 done
 echo "Node joined"
-echo -e "$(kubectl --kubeconfig=/opt/openshift/auth/kubeconfig get nodes)"
-
+echo -e "$(kubectl --kubeconfig=/opt/openshift/auth/kubeconfig-loopback get nodes)"
 
 echo "Stopping approve-csr service"
 systemctl disable approve-csr.service
