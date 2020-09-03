@@ -15,7 +15,6 @@ bootkube_podman_run() {
 
 MACHINE_CONFIG_OPERATOR_IMAGE=$(image_for machine-config-operator)
 MACHINE_CONFIG_ETCD_IMAGE=$(image_for etcd)
-MACHINE_CONFIG_KUBE_CLIENT_AGENT_IMAGE=$(image_for kube-client-agent)
 
 CLUSTER_ETCD_OPERATOR_IMAGE=$(image_for cluster-etcd-operator)
 
@@ -24,6 +23,8 @@ KUBE_CONTROLLER_MANAGER_OPERATOR_IMAGE=$(image_for cluster-kube-controller-manag
 KUBE_SCHEDULER_OPERATOR_IMAGE=$(image_for cluster-kube-scheduler-operator)
 
 OPENSHIFT_HYPERKUBE_IMAGE=$(image_for hyperkube)
+OPENSHIFT_CLUSTER_POLICY_IMAGE=$(image_for cluster-policy-controller)
+
 
 
 mkdir --parents ./{bootstrap-manifests,manifests}
@@ -37,7 +38,6 @@ fi
 
 
 
-# TODO: host-etcd endpoint rendered by cluster-etcd-operator
 ETCD_ENDPOINTS=https://localhost:2379
 if [ ! -f etcd-bootstrap.done ]
 then
@@ -51,19 +51,13 @@ then
 		--manifest-etcd-image="${MACHINE_CONFIG_ETCD_IMAGE}" \
 		--etcd-discovery-domain={{.ClusterDomain}} \
 		--manifest-cluster-etcd-operator-image="${CLUSTER_ETCD_OPERATOR_IMAGE}" \
-		--manifest-setup-etcd-env-image="${MACHINE_CONFIG_OPERATOR_IMAGE}" \
-		--manifest-kube-client-agent-image="${MACHINE_CONFIG_KUBE_CLIENT_AGENT_IMAGE}" \
 		--asset-input-dir=/assets/tls \
 		--asset-output-dir=/assets/etcd-bootstrap \
 		--config-output-file=/assets/etcd-bootstrap/config \
 		--cluster-config-file=/assets/manifests/cluster-network-02-config.yml
 
-	# pass an IP in the sample range to pass validation, but be ignored.
-	sed -i "s/__BOOTSTRAP_IP__/192.0.2.200/" /opt/openshift/manifests/etcd-host-service-endpoints.yaml
-
     sed -i 's/etcd-bootstrap-member/etcd-member/g' etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml
     sed -i 's/openshift-etcd/kube-system/g' etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml
-
 	cp etcd-bootstrap/bootstrap-manifests/etcd-member-pod.yaml /etc/kubernetes/manifests/
 
 	mkdir --parents /etc/kubernetes/static-pod-resources/etcd-member
@@ -110,6 +104,7 @@ then
 		--volume "$PWD:/assets:z" \
 		"${KUBE_CONTROLLER_MANAGER_OPERATOR_IMAGE}" \
 		/usr/bin/cluster-kube-controller-manager-operator render \
+		--cluster-policy-controller-image="${OPENSHIFT_CLUSTER_POLICY_IMAGE}" \
 		--manifest-image="${OPENSHIFT_HYPERKUBE_IMAGE}" \
 		--asset-input-dir=/assets/tls \
 		--asset-output-dir=/assets/kube-controller-manager-bootstrap \
