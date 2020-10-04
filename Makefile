@@ -5,7 +5,7 @@ clean:
 generate:
 	mkdir mydir
 	cp ./install-config.yaml mydir/
-	OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE="registry.svc.ci.openshift.org/ocp/release:4.6.0-0.nightly-2020-09-10-195619" ./bin/openshift-install create aio-config --dir=mydir
+	OPENSHIFT_INSTALL_RELEASE_IMAGE_OVERRIDE="quay.io/openshift-release-dev/ocp-release:4.6.0-fc.8-x86_64" ./bin/openshift-install create aio-config --dir=mydir
 
 start:
 	./hack/virt-install-aio-ign.sh ./mydir/aio.ign
