@@ -11,7 +11,7 @@ RAM_MB="16384"
 DISK_GB="30"
 CPU_CORE="6"
 
-virt-install \
+nohup virt-install \
     --connect qemu:///system \
     -n "${VM_NAME}" \
     -r "${RAM_MB}" \
@@ -24,4 +24,5 @@ virt-install \
     --cdrom "${RHCOS_ISO}" \
     --disk pool=default,size="${DISK_GB}" \
     --boot hd,cdrom \
-    --noautoconsole
+    --noautoconsole \
+    --wait=-1 &
