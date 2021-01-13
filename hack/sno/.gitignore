@@ -1,0 +1,6 @@
+/install-config.yaml
+/*.iso
+/net.xml
+/gathered/
+/sno-workdir
+/nohup.out
