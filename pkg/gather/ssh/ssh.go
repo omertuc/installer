@@ -17,6 +17,8 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 )
 
+type ExitError = ssh.ExitError
+
 // NewClient creates a new SSH client which can be used to SSH to address using user and the keys.
 //
 // if keys list is empty, it tries to load the keys from the user's environment.
