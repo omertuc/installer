@@ -13,15 +13,6 @@ function wait_for_api {
 
 function restart_kubelet {
   echo "Restarting kubelet"
-  until [ "$(oc get pod -n openshift-kube-apiserver-operator --selector='app=kube-apiserver-operator'  -o jsonpath='{.items[0].status.conditions[?(@.type=="Ready")].status}' | grep -c "True")" -eq 1 ];
-  do
-    echo "Waiting for kube-apiserver-operator to ready condition to be True"
-    sleep 10
-  done
-  # daemon-reload is required because /etc/systemd/system/kubelet.service.d/20-nodenet.conf is added after kubelet started
-  systemctl daemon-reload
-  systemctl restart kubelet
-
   while grep  bootstrap-kube-apiserver /etc/kubernetes/manifests/kube-apiserver-pod.yaml;
   do
     echo "Waiting for kube-apiserver to apply the new static pod configuration"
