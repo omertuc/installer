@@ -23,6 +23,12 @@ mkdir -p "${ARTIFACTS}/control-plane/master"
 sudo /usr/local/bin/installer-masters-gather.sh --id "${GATHER_ID}" </dev/null
 cp -r "$MASTER_ARTIFACTS"/* "${ARTIFACTS}/control-plane/master/"
 
+# shellcheck disable=SC2034
+GATHER_KUBECONFIG="/etc/kubernetes/bootstrap-secrets/kubeconfig"
+mkdir -p "${ARTIFACTS}/resources"
+source /usr/local/bin/installer-control-plane-gather.sh
+unset GATHER_KUBECONFIG
+
 BOOTSTRAP_PHASE_LOG_BUNDLE_NAME="log-bundle-bootstrap-in-place-pre-reboot"
 BOOTSTRAP_PHASE_LOG_BUNDLE_ARCHIVE_PATH="/var/log/$BOOTSTRAP_PHASE_LOG_BUNDLE_NAME.tar.gz"
 
