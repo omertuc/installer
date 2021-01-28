@@ -46,7 +46,7 @@ storage:
       mode: 0555
     - path: /usr/local/bin/installer-gather.sh
       contents:
-        local: bin/installer-master-bootstrap-in-place-gather.sh
+        local: bin/installer-gather.sh
       mode: 0555
 systemd:
   units:
