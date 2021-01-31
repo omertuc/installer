@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Collect cluster data
 function queue() {
     local TARGET="${ARTIFACTS}/${1}"
