@@ -9,11 +9,15 @@ fi
 ARTIFACTS="/tmp/artifacts-${GATHER_ID}"
 mkdir -p "${ARTIFACTS}"
 
-
+# The existence of the file located in BOOTSTRAP_IN_PLACE_BOOTSTRAP_PHASE_ARCHIVE_PATH is used
+# as indication that we're running inside a single-node bootstrap-in-place deployment post-pivot
+# master node, rather than a typical bootstrap machine. In the former case, we extract some of
+# the logs from said archive rather than actually collect them.
 BOOTSTRAP_IN_PLACE_BOOTSTRAP_PHASE_LOG_BUNDLE_NAME="log-bundle-bootstrap-in-place-pre-reboot"
 BOOTSTRAP_IN_PLACE_BOOTSTRAP_PHASE_ARCHIVE_PATH="/var/log/$BOOTSTRAP_IN_PLACE_BOOTSTRAP_PHASE_LOG_BUNDLE_NAME.tar.gz"
-
 if [[ -f ${BOOTSTRAP_IN_PLACE_BOOTSTRAP_PHASE_ARCHIVE_PATH} ]]; then
+    # single-node bootstrap-in-place deployment post-pivot master node log gathering
+
     exec &> >(tee "${ARTIFACTS}/bootstrap-in-place-post-pivot-gather.log")
 
     # Instead of gathering bootstrap logs, copy from the pre-preboot gather archive
@@ -34,6 +38,8 @@ if [[ -f ${BOOTSTRAP_IN_PLACE_BOOTSTRAP_PHASE_ARCHIVE_PATH} ]]; then
     sudo /usr/local/bin/installer-masters-gather.sh --id "${MASTER_GATHER_ID}" </dev/null
     cp -r "$MASTER_ARTIFACTS"/* "${ARTIFACTS}/control-plane/master/"
 else
+    # Typical bootstrap log gathering
+
     exec &> >(tee "${ARTIFACTS}/gather.log")
 
     GATHER_KUBECONFIG="/opt/openshift/auth/kubeconfig"
