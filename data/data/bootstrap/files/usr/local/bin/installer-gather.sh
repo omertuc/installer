@@ -59,10 +59,13 @@ find "${ARTIFACTS}/rendered-assets" -name ".kube" -print0 | xargs -0 rm -rf
 
 # Collect cluster data
 GATHER_KUBECONFIG="/opt/openshift/auth/kubeconfig"
-if [[ -f "/etc/kubernetes/bootstrap-secrets/kubeconfig" ]]; then
-    echo "Using ${GATHER_KUBECONFIG} as KUBECONFIG"
-    GATHER_KUBECONFIG=/etc/kubernetes/bootstrap-secrets/kubeconfig
+
+ALTERNATIVE_KUBECONFIG="/etc/kubernetes/bootstrap-secrets/kubeconfig"
+if [[ -f ${ALTERNATIVE_KUBECONFIG} ]]; then
+    GATHER_KUBECONFIG=${ALTERNATIVE_KUBECONFIG}
 fi
+
+echo "Using ${GATHER_KUBECONFIG} as KUBECONFIG"
 
 function queue() {
     local TARGET="${ARTIFACTS}/${1}"
