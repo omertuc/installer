@@ -169,6 +169,9 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 		return err
 	}
 	if a.BootstrapInPlace {
+		if err := verifyBootstrapInPlace(installConfig.Config); err != nil {
+			return err
+		}
 		err = a.addStorageFiles("/", "bootstrap/bootstrap-in-place/files", templateData)
 		if err != nil {
 			return err
@@ -221,9 +224,6 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 	}
 	fileName := bootstrapIgnFilename
 	if a.BootstrapInPlace {
-		if err := verifyBootstrapInPlace(installConfig.Config); err != nil {
-			return err
-		}
 		logrus.Warnf("Creating single node bootstrap in place configuration")
 		fileName = bootstrapInPlaceIgnFilename
 	}
