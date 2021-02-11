@@ -125,8 +125,8 @@ wait
 
 # The existence of the file located in LOG_BUNDLE_BOOTSTRAP_ARCHIVE_NAME is used
 # as indication that a bootstrap process has already previously taken place and the resulting
-# bundle already exists in the filesystem. In that case, we replace some of the logs we've
-# just collected with the logs from said bundle.
+# bundle already exists in the filesystem. In that case, we include said bundle inside the log
+# bundle created by this script.
 #
 # An example for a scenario where this happens is when we're running inside a single-node
 # bootstrap-in-place deployment post-pivot master node, rather than a typical bootstrap node.
@@ -137,9 +137,7 @@ LOG_BUNDLE_BOOTSTRAP_ARCHIVE_NAME="/var/log/${LOG_BUNDLE_BOOTSTRAP_NAME}.tar.gz"
 
 if [[ -f ${LOG_BUNDLE_BOOTSTRAP_ARCHIVE_NAME} ]]; then
     echo "Including existing bootstrap bundle ${LOG_BUNDLE_BOOTSTRAP_ARCHIVE_NAME}"
-    tar -xzf ${LOG_BUNDLE_BOOTSTRAP_ARCHIVE_NAME}
-    mkdir -p "${ARTIFACTS}/bootstrap-log-bundle"
-    cp -r "${LOG_BUNDLE_BOOTSTRAP_NAME}"/* "${ARTIFACTS}/bootstrap-log-bundle/"
+    tar -xzf ${LOG_BUNDLE_BOOTSTRAP_ARCHIVE_NAME} --directory "${ARTIFACTS}"
 fi
 
 echo "Gather remote logs"
