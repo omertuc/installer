@@ -42,9 +42,8 @@ import (
 )
 
 const (
-	rootDir                     = "/opt/openshift"
-	bootstrapIgnFilename        = "bootstrap.ign"
-	bootstrapInPlaceIgnFilename = "bootstrap-in-place-for-live-iso.ign"
+	rootDir              = "/opt/openshift"
+	bootstrapIgnFilename = "bootstrap.ign"
 )
 
 // bootstrapTemplateData is the data to use to replace values in bootstrap
@@ -169,9 +168,6 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 		return err
 	}
 	if a.BootstrapInPlace {
-		if err := verifyBootstrapInPlace(installConfig.Config); err != nil {
-			return err
-		}
 		err = a.addStorageFiles("/", "bootstrap/bootstrap-in-place/files", templateData)
 		if err != nil {
 			return err
