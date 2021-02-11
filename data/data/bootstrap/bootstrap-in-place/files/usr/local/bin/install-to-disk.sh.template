@@ -18,4 +18,5 @@ fi
 
 echo "Going to reboot"
 shutdown -r +1 "Bootstrap completed, server is going to reboot."
+touch /opt/openshift/.install-to-disk.done
 echo "Done"

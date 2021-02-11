@@ -3,7 +3,7 @@ Description=Install to disk
 Requires=bootkube.service
 Wants=bootkube.service
 After=bootkube.service
-ConditionPathExists=!/opt/openshift/.bootkube.done
+ConditionPathExists=!/opt/openshift/.install-to-disk.done
 
 [Service]
 WorkingDirectory=/opt/openshift

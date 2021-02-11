@@ -224,7 +224,7 @@ func (a *Bootstrap) Generate(dependencies asset.Parents) error {
 	}
 	fileName := bootstrapIgnFilename
 	if a.BootstrapInPlace {
-		logrus.Warnf("Creating single node bootstrap in place configuration")
+		logrus.Info("Creating single node bootstrap in place configuration")
 		fileName = bootstrapInPlaceIgnFilename
 	}
 	a.File = &asset.File{

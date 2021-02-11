@@ -33,7 +33,7 @@ if [ ! -f master-ignition.done ]; then
   GATHER_TAR_FILE=log-bundle-${GATHER_ID}.tar.gz
 
   echo "Gathering installer bootstrap logs"
-  TAR_FILE=${GATHER_TAR_FILE} /usr/local/bin/installer-gather.sh --id $GATHER_ID
+  TAR_FILE=${GATHER_TAR_FILE} /usr/local/bin/installer-gather.sh --id ${GATHER_ID}
 
   echo "Adding bootstrap control plane and bootstrap installer-gather bundle to master ignition"
   bootkube_podman_run \

@@ -344,24 +344,18 @@ then
 fi
 
 # in case of single node, if we removed etcd, there is no point to wait for it on restart
-if [ "$BOOTSTRAP_INPLACE" = true ]
+if [ ! -f stop-etcd.done ]
 then
-    if [ ! -f stop-etcd.done ]
-    then
-        # Wait for the etcd cluster to come up.
-        wait_for_etcd_cluster
-    fi
-else
-    wait_for_etcd_cluster
+	# Wait for the etcd cluster to come up.
+	wait_for_etcd_cluster
 fi
 
-
+REQUIRED_PODS="openshift-kube-apiserver/kube-apiserver,openshift-kube-scheduler/openshift-kube-scheduler,openshift-kube-controller-manager/kube-controller-manager,openshift-cluster-version/cluster-version-operator"
 if [ "$BOOTSTRAP_INPLACE" = true ]
-then
     REQUIRED_PODS=""
-else
-    REQUIRED_PODS="openshift-kube-apiserver/kube-apiserver,openshift-kube-scheduler/openshift-kube-scheduler,openshift-kube-controller-manager/kube-controller-manager,openshift-cluster-version/cluster-version-operator"
+then
 fi
+
 echo "Starting cluster-bootstrap..."
 
 if [ ! -f cb-bootstrap.done ]
@@ -371,7 +365,7 @@ then
         --volume "$PWD:/assets:z" \
         --volume /etc/kubernetes:/etc/kubernetes:z \
         "${CLUSTER_BOOTSTRAP_IMAGE}" \
-        start --tear-down-early=false --asset-dir=/assets --required-pods="$REQUIRED_PODS"
+        start --tear-down-early=false --asset-dir=/assets --required-pods="${REQUIRED_PODS}"
 
     touch cb-bootstrap.done
 fi
